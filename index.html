@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOUND IT! – PSC Lost & Found</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary-color: #87CEEB;
+      --primary-dark: #4682B4;
+      --accent-color: #FFF9C4;
+      --bg-color: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --danger-color: #EF4444;
+      --success-color: #10B981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    .navbar {
+      background: #FFFFFF;
+      border-bottom: 2px solid var(--primary-color);
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-name {
+      color: var(--primary-dark);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .sub-brand {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .hero-section {
+      background: linear-gradient(135deg, var(--primary-color), #E0F2FE);
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+
+    .btn {
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary { background: var(--primary-dark); color: white; }
+    .btn-outline { background: transparent; border: 2px solid var(--primary-dark); color: var(--primary-dark); }
+    .btn-danger { background: var(--danger-color); color: white; }
+    .btn-success { background: var(--success-color); color: white; }
+
+    .container {
+      max-width: 1200px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+    }
+
+    .filter-section {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-direction: column;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .item-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .item-img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background-color: var(--accent-color);
+    }
+
+    .item-content { padding: 1rem; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background-color: var(--accent-color);
+      color: #854D0E;
+    }
+
+    .badge-cash { background-color: #FEF08A; color: #713F12; }
+    .item-title { font-size: 1.1rem; font-weight: 700; margin: 0.4rem 0; }
+    .item-meta { font-size: 0.85rem; color: var(--text-muted); }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 0.8rem; right: 1.2rem;
+      font-size: 1.8rem;
+    }
+
+    .private-box {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      padding: 0.8rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+
+    .form-group { margin-bottom: 0.8rem; }
+    .form-row { display: flex; gap: 0.5rem; }
+    .full-width { width: 100%; margin-top: 0.8rem; }
+    .hidden { display: none !important; }
+
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      background: white;
+      padding: 0.8rem;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 0.4rem 1rem;
+      border: none;
+      background: none;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .tab-btn.active {
+      color: var(--primary-dark);
+      border-bottom: 3px solid var(--primary-dark);
+    }
+
+    #image-preview {
+      width: 100%;
+      max-height: 160px;
+      object-fit: contain;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo-container">
+      <h1 class="brand-name">FOUND IT!</h1>
+      <span class="sub-brand">PSC Lost & Found</span>
+    </div>
+    <div class="auth-btn-wrapper">
+      <button id="nav-login-btn" class="btn btn-outline" onclick="openLoginModal()">เข้าสู่ระบบเจ้าหน้าที่</button>
+      <button id="nav-logout-btn" class="btn btn-danger hidden" onclick="handleLogout()">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <section class="hero-section">
+    <div class="hero-content">
+      <h2>Lost something? Let's FOUND IT!</h2>
+      <p>ระบบสืบค้นและจัดการสิ่งของสูญหาย โรงเรียนราชินีบูรณะ (Princess Sirindhorn's College)</p>
+    </div>
+  </section>
+
+  <div id="staff-tab-bar" class="tab-bar hidden">
+    <button class="tab-btn active" onclick="switchTab('unclaimed')">รายการรอรับคืน</button>
+    <button class="tab-btn" onclick="switchTab('history')">ประวัติการรับคืนแล้ว</button>
+    <button class="btn btn-primary" onclick="openAddItemModal()">+ เพิ่มรายการสิ่งของที่พบ</button>
+  </div>
+
+  <main class="container">
+    <section class="filter-section">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="ค้นหาจากชื่อสิ่งของ หรือสถานที่..." oninput="filterItems()">
+      </div>
+      <div class="category-box">
+        <select id="category-filter" onchange="filterItems()">
+          <option value="">ทุกหมวดหมู่</option>
+          <option value="อุปกรณ์การเรียน">อุปกรณ์การเรียน</option>
+          <option value="เครื่องแต่งกาย">เครื่องแต่งกาย</option>
+          <option value="ของใช้ส่วนตัว">ของใช้ส่วนตัว</option>
+          <option value="อุปกรณ์อิเล็กทรอนิกส์">อุปกรณ์อิเล็กทรอนิกส์</option>
+          <option value="เงินสด">เงินสด</option>
+          <option value="อื่น ๆ">อื่น ๆ</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="items-grid" id="items-grid">
+      <div class="loading-spinner">กำลังโหลดข้อมูลสิ่งของ...</div>
+    </section>
+  </main>
+
+  <div id="login-modal" class="modal hidden">
+    <div class="modal-content card">
+      <span class="close-btn" onclick="closeModal('login-modal')">&times;</span>
+      <h3>เข้าสู่ระบบเจ้าหน้าที่</h3>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-email">อีเมลเจ้าหน้าที่</label>
+          <input type="email" id="login-email" required placeholder="staff@psc.ac.th">
+        </div>
+        <div class="form-group">
+          <label for="login-password">รหัสผ่าน</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn btn-primary full-width">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="add-modal" class="modal hidden">
+    <div class="modal-content card">
+      <span class="close-btn" onclick="closeModal('add-modal')">&times;</span>
+      <h3>เพิ่มรายการสิ่งของที่พบ</h3>
+      <form id="add-item-form" onsubmit="handleAddItem(event)">
+        <div class="form-group">
+          <label>หมวดหมู่ *</label>
+          <select id="item-category" required onchange="toggleCashFields()">
+            <option value="อุปกรณ์การเรียน">อุปกรณ์การเรียน</option>
+            <option value="เครื่องแต่งกาย">เครื่องแต่งกาย</option>
+            <option value="ของใช้ส่วนตัว">ของใช้ส่วนตัว</option>
+            <option value="อุปกรณ์อิเล็กทรอนิกส์">อุปกรณ์อิเล็กทรอนิกส์</option>
+            <option value="เงินสด">เงินสด</option>
+            <option value="อื่น ๆ">อื่น ๆ</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>ชื่อสิ่งของ *</label>
+          <input type="text" id="item-name" required placeholder="เช่น กระเป๋าเพ็นซิลพัช สีน้ำเงิน">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>วันที่พบ *</label>
+            <input type="date" id="item-date" required>
+          </div>
+          <div class="form-group">
+            <label>เวลาที่พบ *</label>
+            <input type="time" id="item-time" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>สถานที่พบ *</label>
+          <input type="text" id="item-location" required placeholder="เช่น ใต้โดมหน้าอาคาร 3">
+        </div>
+
+        <div class="form-group">
+          <label>รูปภาพสิ่งของ (ถ่ายรูปจากกล้อง หรือเลือกไฟล์)</label>
+          <input type="file" id="item-image" accept="image/jpeg,image/png,image/webp" capture="environment" onchange="previewImage(event)">
+          <div id="image-preview-container" class="hidden">
+            <img id="image-preview" src="" alt="Preview">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>รายละเอียดสาธารณะ (นักเรียนมองเห็น)</label>
+          <textarea id="item-public-desc" rows="2" placeholder="รายละเอียดทั่วไปที่ไม่กระทบความปลอดภัย"></textarea>
+        </div>
+
+        <div class="private-box">
+          <h4>🔒 ข้อมูลภายในเฉพาะเจ้าหน้าที่ (นักเรียนไม่เห็น)</h4>
+          <div id="cash-amount-group" class="form-group hidden">
+            <label>จำนวนเงิน (บาท) *</label>
+            <input type="number" id="cash-amount" min="0" step="0.5" placeholder="เช่น 500">
+          </div>
+          <div class="form-group">
+            <label>รายละเอียดสำหรับยืนยันเจ้าของ *</label>
+            <textarea id="item-private-desc" rows="2" required placeholder="เช่น มีรอยสลักชื่อ หรือจุดสังเกตเฉพาะ"></textarea>
+          </div>
+        </div>
+
+        <button type="submit" id="add-submit-btn" class="btn btn-primary full-width">บันทึกและเผยแพร่</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal hidden">
+    <div class="modal-content card">
+      <span class="close-btn" onclick="closeModal('detail-modal')">&times;</span>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "ใส่_SUPABASE_URL_ตรงนี้";
+    const SUPABASE_ANON_KEY = "ใส่_SUPABASE_ANON_KEY_ตรงนี้";
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentItems = [];
+    let currentStaff = null;
+    let activeTab = 'unclaimed';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await checkAuthState();
+      await fetchItems();
+      
+      supabaseClient.auth.onAuthStateChange(async () => {
+        await checkAuthState();
+        await fetchItems();
+      });
+    });
+
+    async function checkAuthState() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        const { data: profile } = await supabaseClient
+          .from('staff_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .single();
+
+        if (profile) {
+          currentStaff = profile;
+          document.getElementById('nav-login-btn').classList.add('hidden');
+          document.getElementById('nav-logout-btn').classList.remove('hidden');
+          document.getElementById('staff-tab-bar').classList.remove('hidden');
+          return;
+        }
+      }
+      currentStaff = null;
+      activeTab = 'unclaimed';
+      document.getElementById('nav-login-btn').classList.remove('hidden');
+      document.getElementById('nav-logout-btn').classList.add('hidden');
+      document.getElementById('staff-tab-bar').classList.add('hidden');
+    }
+
+    async function fetchItems() {
+      const grid = document.getElementById('items-grid');
+      grid.innerHTML = '<div class="loading-spinner">กำลังโหลดข้อมูลสิ่งของ...</div>';
+
+      let query = supabaseClient.from('items').select('*');
+
+      if (!currentStaff) {
+        query = query.eq('status', 'unclaimed');
+      } else {
+        query = query.eq('status', activeTab);
+      }
+
+      query = query.order('found_date', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        grid.innerHTML = `<p class="error-msg">เกิดข้อผิดพลาดในการดึงข้อมูล</p>`;
+        return;
+      }
+
+      currentItems = data || [];
+      filterItems();
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById('items-grid');
+      grid.innerHTML = '';
+
+      if (items.length === 0) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">ไม่พบรายการสิ่งของ</p>';
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+
+        const isCash = item.category === 'เงินสด';
+        const displayName = isCash ? 'พบเงินสด' : escapeHtml(item.name);
+        
+        const imageUrl = (isCash || !item.image_path)
+          ? 'https://via.placeholder.com/300x200?text=PSC+Lost+%26+Found'
+          : supabaseClient.storage.from('item-images').getPublicUrl(item.image_path).data.publicUrl;
+
+        card.innerHTML = `
+          <img src="${imageUrl}" class="item-img" alt="${displayName}">
+          <div class="item-content">
+            <span class="badge ${isCash ? 'badge-cash' : ''}">${escapeHtml(item.category)}</span>
+            <h3 class="item-title">${displayName}</h3>
+            <p class="item-meta">📅 วันที่พบ: ${item.found_date}</p>
+            <p class="item-meta">⏰ เวลาที่พบ: ${item.found_time}</p>
+            <p class="item-meta">📍 สถานที่: ${escapeHtml(item.found_location)}</p>
+            ${!isCash && item.public_description ? `<p class="item-meta" style="margin-top:0.5rem; color:var(--text-main);">${escapeHtml(item.public_description)}</p>` : ''}
+            ${currentStaff ? `<button class="btn btn-outline full-width" style="margin-top:0.8rem;" onclick="openDetailModal('${item.id}')">จัดการรายการ / ข้อมูลลับ</button>` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterItems() {
+      const keyword = document.getElementById('search-input').value.toLowerCase().trim();
+      const category = document.getElementById('category-filter').value;
+
+      const filtered = currentItems.filter(item => {
+        const nameMatch = item.category === 'เงินสด' ? 'พบเงินสด'.includes(keyword) : item.name.toLowerCase().includes(keyword);
+        const locMatch = item.found_location.toLowerCase().includes(keyword);
+        const searchMatch = nameMatch || locMatch;
+        const catMatch = category === '' || item.category === category;
+        
+        return searchMatch && catMatch;
+      });
+
+      renderItems(filtered);
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const errDiv = document.getElementById('login-error');
+      
+      errDiv.classList.add('hidden');
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errDiv.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+        errDiv.classList.remove('hidden');
+        return;
+      }
+
+      closeModal('login-modal');
+      document.getElementById('login-form').reset();
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+    }
+
+    async function handleAddItem(e) {
+      e.preventDefault();
+      const btn = document.getElementById('add-submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'กำลังบันทึก...';
+
+      try {
+        const category = document.getElementById('item-category').value;
+        const name = document.getElementById('item-name').value;
+        const date = document.getElementById('item-date').value;
+        const time = document.getElementById('item-time').value;
+        const location = document.getElementById('item-location').value;
+        const publicDesc = document.getElementById('item-public-desc').value;
+        const privateDesc = document.getElementById('item-private-desc').value;
+        const cashAmount = document.getElementById('cash-amount').value;
+        const fileInput = document.getElementById('item-image');
+
+        let imagePath = null;
+
+        if (category !== 'เงินสด' && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabaseClient.storage
+            .from('item-images')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+          imagePath = uploadData.path;
+        }
+
+        const { data: itemData, error: itemError } = await supabaseClient
+          .from('items')
+          .insert([{
+            name: category === 'เงินสด' ? 'พบเงินสด' : name,
+            category,
+            public_description: category === 'เงินสด' ? '' : publicDesc,
+            found_date: date,
+            found_time: time,
+            found_location: location,
+            image_path: imagePath,
+            created_by: currentStaff.user_id
+          }])
+          .select()
+          .single();
+
+        if (itemError) throw itemError;
+
+        const { error: privateError } = await supabaseClient
+          .from('private_item_details')
+          .insert([{
+            item_id: itemData.id,
+            private_description: privateDesc,
+            cash_amount: category === 'เงินสด' ? parseFloat(cashAmount) || 0 : null,
+            verification_details: privateDesc
+          }]);
+
+        if (privateError) throw privateError;
+
+        alert('เพิ่มรายการสำเร็จ!');
+        closeModal('add-modal');
+        document.getElementById('add-item-form').reset();
+        document.getElementById('image-preview-container').classList.add('hidden');
+        await fetchItems();
+
+      } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'บันทึกและเผยแพร่';
+      }
+    }
+
+    async function openDetailModal(itemId) {
+      const modalBody = document.getElementById('detail-body');
+      modalBody.innerHTML = '<p>กำลังดึงข้อมูล...</p>';
+      openModal('detail-modal');
+
+      const { data: item } = await supabaseClient
+        .from('items')
+        .select('*')
+        .eq('id', itemId)
+        .single();
+
+      const { data: privateDetail } = await supabaseClient
+        .from('private_item_details')
+        .select('*')
+        .eq('item_id', itemId)
+        .maybeSingle();
+
+      const imageUrl = item.image_path 
+        ? supabaseClient.storage.from('item-images').getPublicUrl(item.image_path).data.publicUrl
+        : null;
+
+      modalBody.innerHTML = `
+        <h3>รายละเอียดสิ่งของ (${escapeHtml(item.name)})</h3>
+        ${imageUrl ? `<img src="${imageUrl}" style="width:100%; max-height:220px; object-fit:contain; margin:0.8rem 0; border-radius:8px;">` : ''}
+        <p><strong>หมวดหมู่:</strong> ${escapeHtml(item.category)}</p>
+        <p><strong>วันที่/เวลาพบ:</strong> ${item.found_date} ${item.found_time}</p>
+        <p><strong>สถานที่พบ:</strong> ${escapeHtml(item.found_location)}</p>
+        
+        <div class="private-box">
+          <h4>🔒 รายละเอียดเฉพาะเจ้าหน้าที่</h4>
+          ${item.category === 'เงินสด' ? `<p><strong>จำ
